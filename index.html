@@ -226,8 +226,8 @@ const nodesData = [
     ]
   }},
   {id:"ORCH", label:"o3 Orchestrator", icon:"🧩", cat:"orchestrator", details:{ title:"🧩 ORCH – o3 Orchestrator", sections:[
-      {label:"Role", text:"Brain of the workflow."},
-      {label:"Functions", text:"Parallelizes leaf calls. Applies smart retry / vendor-failover rules. Publishes trace-logs to Kafka."},
+      {label:"Overview", text:"Brain of the workflow."},
+      {label:"Details", text:"• Parallelizes leaf calls.<br>• Applies smart retry / vendor-failover rules.<br>• Publishes trace-logs to Kafka."},
       {label:"KPIs shown", text:"Latency per leaf, overall SLA countdown, current retry depth."}
     ]
   }},
@@ -239,26 +239,26 @@ const nodesData = [
   }},
   {id:"Nexus", label:"NatCrimLeaf", icon:"🔍", cat:"data", details:{ title:"🔍 Nexus – NatCrimLeaf", sections:[
       {label:"Sources", text:"SJV, InformData, Equifax SmartScreen national criminal datasets."},
-      {label:"Scope", text:"50-state instant databases, sex-offender, Interpol, FBI-WANTED, sanctions watchlists."},
-      {label:"Flags", text:"Possible record ⇒ county fan-out."}
+      {label:"Scope", text:"50-state instant DBs, sex-offender, Interpol, FBI-WANTED, sanctions watchlists."},
+      {label:"Flags", text:"Possible record → county fan-out orchestrator."}
     ]
   }},
   {id:"MVR", label:"MVRLeaf", icon:"🚗", cat:"data", details:{ title:"🚗 MVR – MVRLeaf", sections:[
       {label:"Vendors", text:"SambaSafety, InformData, SJV."},
       {label:"Pulls", text:"State DMV, CDLIS, medical card status."},
-      {label:"Metrics", text:"Points, suspensions, serious violations; FMCSA PSP hot-link."}
+      {label:"Metrics", text:"Points, suspensions, serious violations; FMCSA PSP link."}
     ]
   }},
   {id:"EMP", label:"EmploymentLeaf", icon:"💼", cat:"data", details:{ title:"💼 EMP – EmploymentLeaf", sections:[
       {label:"Vendors", text:"Equifax TWN, SJV, InformData, Experian Verify."},
       {label:"Logic", text:"1) Instant DB → 2) automated call fallback (📞 CALL1)."},
-      {label:"Shows", text:"Employer name, title, start/stop dates, discrepancy delta."}
+      {label:"Shows", text:"Employer name, title, start/end dates, discrepancy delta."}
     ]
   }},
   {id:"CALL1", label:"VoiceCallLeaf HR", icon:"📞", cat:"aux", details:{ title:"📞 CALL1 – VoiceCallLeaf HR", sections:[
       {label:"Technology", text:"Twilio Programmable Voice bot."},
-      {label:"Script Example", text:"“Could you please verify…”"},
-      {label:"Extras", text:"Call recording link, speech-to-text transcript, confidence score."}
+      {label:"Script", text:"“Could you please verify…”"},
+      {label:"Extras", text:"Call recording link, transcript, confidence score."}
     ]
   }},
   {id:"EDU", label:"EducationLeaf", icon:"🎓", cat:"data", details:{ title:"🎓 EDU – EducationLeaf", sections:[
@@ -268,13 +268,14 @@ const nodesData = [
     ]
   }},
   {id:"CALL2", label:"VoiceCallLeaf Registrar", icon:"📞", cat:"aux", details:{ title:"📞 CALL2 – VoiceCallLeaf Registrar", sections:[
-      {label:"Technology", text:"Twilio AI call to school registrars."},
+      {label:"Technology", text:"Twilio AI call to registrars."},
+      {label:"Purpose", text:"Automated verification when DB fails."},
       {label:"Data captured", text:"Enrollment dates, degree level, registrar name, call audio link."}
     ]
   }},
   {id:"CREDIT", label:"CreditLeaf", icon:"💳", cat:"data", details:{ title:"💳 CREDIT – CreditLeaf", sections:[
       {label:"Bureaus", text:"TransUnion, Experian, Equifax."},
-      {label:"Outputs", text:"Employment fraud indicators, SSN issue state/year, consumer-statement flag."},
+      {label:"Outputs", text:"Employment fraud indicators, SSN issue state/year, consumer statement flag."},
       {label:"Optional", text:"Credit summary if permissible purpose."}
     ]
   }},
