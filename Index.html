@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investor-Focused Background-Check Flowchart with Milestones</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --svg-bg-color: #ffffff;
+      --text-primary: #212529;
+      --text-secondary: #495057;
+      --border-color: #dee2e6;
+      --interactive-accent: #007bff;
+      --interactive-accent-hover: #0056b3;
+      --flow-highlight-color: #17a2b8; /* Teal/Cyan for flow */
+      --flow-highlight-node-stroke: #007bff; /* Blue for active node stroke */
+      --milestone-highlight-color: #28a745; /* Green for milestone emphasis */
+      --dimmed-opacity: 0.2;
+      --panel-bg: rgba(255, 255, 255, 0.88); /* Slightly more opaque */
+      --panel-border: rgba(0, 0, 0, 0.1);
+      --shadow-color: rgba(0, 0, 0, 0.1);
+      --font-family: 'Inter', sans-serif;
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: var(--font-family);
+      background: var(--bg-color);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      position: relative;
+    }
+    #narration-panel {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 85%;
+      max-width: 750px;
+      padding: 14px 22px; /* Slightly more padding */
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px); /* Stronger blur */
+      border: 1px solid var(--panel-border);
+      border-radius: 12px; /* More rounded */
+      box-shadow: 0 5px 20px var(--shadow-color); /* Enhanced shadow */
+      z-index: 200;
+      text-align: center;
+      font-size: 14.5px; /* Slightly larger */
+      font-weight: 500;
+      color: var(--text-primary);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, visibility 0.4s ease, top 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    #narration-panel.visible {
+      opacity: 1;
+      visibility: visible;
+      top: 20px;
+    }
+    #narration-panel.milestone-active { /* Style for milestone emphasis */
+      border-color: var(--milestone-highlight-color);
+      box-shadow: 0 5px 25px rgba(40, 167, 69, 0.2); /* Greenish shadow */
+    }
+    #narration-panel-text {
+        min-height: 22px;
+        font-weight: 400;
+    }
+    #narration-panel-text strong { /* For "MILESTONE:" prefix */
+        font-weight: 600;
+        color: var(--milestone-highlight-color);
+    }
+
+    .svg-container { width: 100%; flex-grow: 1; position: relative; }
+    svg { cursor: grab; width: 100%; height: 100%; display: block; background: var(--svg-bg-color); }
+    svg.grabbing, svg.grabbing .node:hover { cursor: grabbing !important; }
+
+    .link { stroke: var(--border-color); stroke-opacity: 0.8; stroke-width: 1.8px; transition: stroke-opacity 0.4s ease, stroke 0.4s ease, stroke-width 0.4s ease; }
+    .node { cursor: pointer; }
+    .node-icon { font-size: 26px; text-anchor: middle; dominant-baseline: central; pointer-events: none; fill: white; transition: opacity 0.4s ease; }
+    .node-circle { filter: url(#node-shadow); stroke: #fff; stroke-width: 2.5px; transition: stroke-width 0.2s, stroke 0.2s, fill-opacity 0.4s ease, stroke-opacity 0.4s ease, transform 0.3s ease; }
+    .node:hover .node-circle { stroke-width: 3.5px; transform: scale(1.05); }
+    .node.selected .node-circle { stroke: var(--interactive-accent); stroke-width: 4px; }
+
+    /* Flow Animation Styles (largely same) */
+    .flow-active .node:not(.flow-highlighted) .node-circle,
+    .flow-active .node:not(.flow-highlighted) .node-icon { fill-opacity: var(--dimmed-opacity) !important; stroke-opacity: var(--dimmed-opacity) !important; }
+    .flow-active .node:not(.flow-highlighted) .node-icon { opacity: var(--dimmed-opacity) !important; }
+    .flow-active .link:not(.flow-highlighted-link) { stroke-opacity: var(--dimmed-opacity) !important; }
+
+    .node.flow-highlighted .node-circle { stroke: var(--flow-highlight-node-stroke) !important; stroke-width: 3.5px !important; fill-opacity: 1 !important; stroke-opacity: 1 !important; animation: pulse-node 1.5s infinite ease-in-out; }
+    .node.flow-highlighted .node-icon { opacity: 1 !important; fill-opacity: 1 !important; }
+    @keyframes pulse-node { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+    .link.flow-highlighted-link { stroke: var(--flow-highlight-color) !important; stroke-width: 3px !important; stroke-opacity: 1 !important; stroke-dasharray: 8 4; animation: marching-ants 0.8s linear infinite; }
+    @keyframes marching-ants { to { stroke-dashoffset: -12; } }
+
+    /* Controls, Legend, Details Panel (styling largely same as v5, minor tweaks if needed) */
+    .controls { position: absolute; left: 25px; bottom: 25px; display: flex; gap: 12px; z-index: 10; }
+    .controls button { padding: 10px 18px; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; color: #fff; cursor: pointer; box-shadow: 0 2px 8px var(--shadow-color); transition: background-color .2s, transform 0.1s ease; }
+    .controls button:active { transform: scale(0.97); }
+    #reset-zoom-btn { background: var(--interactive-accent); } #reset-zoom-btn:hover { background: var(--interactive-accent-hover); }
+    #start-flow-btn { background: #28a745; } #start-flow-btn:hover { background: #1e7e34; }
+    #reset-flow-btn { background: #dc3545; display: none; } #reset-flow-btn:hover { background: #b02a37; }
+
+    #legend { position: absolute; right: 25px; bottom: 25px; background: var(--panel-bg); backdrop-filter: blur(8px); padding: 12px 18px; border-radius: 10px; font-size: 13px; box-shadow: 0 3px 10px var(--shadow-color); border: 1px solid var(--panel-border); z-index: 10; }
+    #legend h4 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    #legend-items { /* ... same ... */ }
+    .legend-color-swatch { width: 16px; height: 16px; border-radius: 4px; display: inline-block; border: 1px solid var(--border-color); justify-self: center; }
+    .legend-text { color: var(--text-secondary); font-weight: 500; }
+
+
+    .details-panel { position: absolute; bottom: 25px; left: 25px; width: 300px; max-height: 40%; background: var(--panel-bg); backdrop-filter: blur(10px); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 5px 20px var(--shadow-color); padding: 18px; padding-top: 45px; opacity: 0; visibility: hidden; transform: translateY(20px) scale(0.95); transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease; z-index: 100; overflow-y: auto; }
+    @media (max-width: 900px) { .details-panel { bottom: calc(25px + 60px + 15px); left: 25px; max-height: 30%; } }
+    .details-panel.visible { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+    .details-panel-close { position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 26px; font-weight: bold; color: var(--text-secondary); cursor: pointer; padding: 5px; line-height: 1;}
+    .details-panel-close:hover { color: var(--text-primary); }
+    #details-panel-title { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-top: 0; margin-bottom: 15px; }
+    #details-panel-content p { font-size: 13px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 8px; }
+    #details-panel-content p:last-child { margin-bottom: 0; }
+    #details-panel-content strong { color: var(--text-primary); font-weight: 600; }
+
+  </style>
+</head>
+<body>
+  <div id="narration-panel"><span id="narration-panel-text">Process overview will appear here.</span></div>
+
+  <div class="svg-container">
+    <svg></svg>
+    <div id="legend">
+      <h4>Node Categories</h4>
+      <div id="legend-items"></div>
+    </div>
+    <div class="controls">
+      <button id="reset-zoom-btn">Reset View</button>
+      <button id="start-flow-btn">Start Process Flow</button>
+      <button id="reset-flow-btn">Reset Flow</button>
+    </div>
+    <div id="details-panel" class="details-panel">
+      <button id="details-panel-close" class="details-panel-close" aria-label="Close details panel">&times;</button>
+      <h3 id="details-panel-title"></h3>
+      <div id="details-panel-content"></div>
+    </div>
+  </div>
+
+<script>
+// Data (nodesData and linksData) - Use your full, detailed data here.
+const nodesData = [
+  {id:"INT", label:"Intake", icon:"📥", cat:"input", details:{ title:"📥 INT – Intake", sections:[
+      {label:"Purpose", text:"Entry-point API."},
+      {label:"What it does", text:"Receives candidate JSON/CSV, validates schema, tokenizes PII, stamps job ID & tenant ID."},
+      {label:"Why it matters", text:"Clean, normalized data prevents downstream mismatches & duplicate hits."}
+    ]
+  }},
+  {id:"ORCH", label:"o3 Orchestrator", icon:"🧩", cat:"orchestrator", details:{ title:"🧩 ORCH – o3 Orchestrator", sections:[
+      {label:"Overview", text:"Brain of the workflow."},
+      {label:"Details", text:"• Parallelizes leaf calls.<br>• Applies smart retry / vendor-failover rules.<br>• Publishes trace-logs to Kafka."},
+      {label:"KPIs shown", text:"Latency per leaf, overall SLA countdown, current retry depth."}
+    ]
+  }},
+  {id:"ID", label:"IdentityLeaf", icon:"🆔", cat:"data", details:{ title:"🆔 ID – IdentityLeaf", sections:[
+      {label:"Sources", text:"SJV, InformData, Experian, Equifax."},
+      {label:"Checks", text:"SSN trace, DOB match, Death Master File, high-risk address flag."},
+      {label:"Returns", text:"Full alias set + OFAC screening delta."}
+    ]
+  }},
+  {id:"Nexus", label:"NatCrimLeaf", icon:"🔍", cat:"data", details:{ title:"🔍 Nexus – NatCrimLeaf", sections:[
+      {label:"Sources", text:"SJV, InformData, Equifax SmartScreen national criminal datasets."},
+      {label:"Scope", text:"50-state instant DBs, sex-offender, Interpol, FBI-WANTED, sanctions watchlists."},
+      {label:"Flags", text:"Possible record → county fan-out orchestrator."}
+    ]
+  }},
+  {id:"MVR", label:"MVRLeaf", icon:"🚗", cat:"data", details:{ title:"🚗 MVR – MVRLeaf", sections:[
+      {label:"Vendors", text:"SambaSafety, InformData, SJV."},
+      {label:"Pulls", text:"State DMV, CDLIS, medical card status."},
+      {label:"Metrics", text:"Points, suspensions, serious violations; FMCSA PSP link."}
+    ]
+  }},
+  {id:"EMP", label:"EmploymentLeaf", icon:"💼", cat:"data", details:{ title:"💼 EMP – EmploymentLeaf", sections:[
+      {label:"Vendors", text:"Equifax TWN, SJV, InformData, Experian Verify."},
+      {label:"Logic", text:"1) Instant DB → 2) automated call fallback (📞 CALL1)."},
+      {label:"Shows", text:"Employer name, title, start/end dates, discrepancy delta."}
+    ]
+  }},
+  {id:"CALL1", label:"VoiceCallLeaf HR", icon:"📞", cat:"aux", details:{ title:"📞 CALL1 – VoiceCallLeaf HR", sections:[
+      {label:"Technology", text:"Twilio Programmable Voice bot."},
+      {label:"Script", text:"“Could you please verify…”"},
+      {label:"Extras", text:"Call recording link, transcript, confidence score."}
+    ]
+  }},
+  {id:"EDU", label:"EducationLeaf", icon:"🎓", cat:"data", details:{ title:"🎓 EDU – EducationLeaf", sections:[
+      {label:"Vendors", text:"NSC, SJV, InformData."},
+      {label:"Checks", text:"Enrollment, graduation, degree major."},
+      {label:"Fallback", text:"Registrar dial-out (📞 CALL2)."}
+    ]
+  }},
+  {id:"CALL2", label:"VoiceCallLeaf Registrar", icon:"📞", cat:"aux", details:{ title:"📞 CALL2 – VoiceCallLeaf Registrar", sections:[
+      {label:"Technology", text:"Twilio AI call to registrars."},
+      {label:"Purpose", text:"Automated verification when DB fails."},
+      {label:"Data captured", text:"Enrollment dates, degree level, registrar name, call audio link."}
+    ]
+  }},
+  {id:"CREDIT", label:"CreditLeaf", icon:"💳", cat:"data", details:{ title:"💳 CREDIT – CreditLeaf", sections:[
+      {label:"Bureaus", text:"TransUnion, Experian, Equifax."},
+      {label:"Outputs", text:"Employment fraud indicators, SSN issue state/year, consumer statement flag."},
+      {label:"Optional", text:"Credit summary if permissible purpose."}
+    ]
+  }},
+  {id:"CIVIL", label:"CivilLeaf", icon:"🏛", cat:"data", details:{ title:"🏛 CIVIL – CivilLeaf", sections:[
+      {label:"Sources", text:"SJV, InformData, Experian, Equifax civil courts feed."},
+      {label:"Coverage", text:"Federal & state civil docket indexes."},
+      {label:"Returns", text:"Case title, filing date, amount, disposition."}
+    ]
+  }},
+  {id:"LICENSE", label:"LicenseLeaf", icon:"🏷", cat:"data", details:{ title:"🏷 LICENSE – LicenseLeaf", sections:[
+      {label:"Sources", text:"SJV, InformData, Experian + board scrapes."},
+      {label:"Checks", text:"Professional, driver, fitness licenses."},
+      {label:"Shows", text:"License #, status, expiration, sanctions."}
+    ]
+  }},
+  {id:"SANCT", label:"SanctionLeaf", icon:"⚖️", cat:"data", details:{ title:"⚖️ SANCT – SanctionLeaf", sections:[
+      {label:"Focus", text:"Medical sanctions (OIG, SAM, DEA), debarment lists."},
+      {label:"Databases", text:"SJV MedEx, InformData MedEx."},
+      {label:"Outcome", text:"Match/no-match + sanction narrative."}
+    ]
+  }},
+  {id:"CNTY", label:"County Fan-Out", icon:"🌎", cat:"data", details:{ title:"🌎 CNTY – County Fan-Out", sections:[
+      {label:"Role", text:"Spawns county-level tasks."},
+      {label:"Workflow", text:"Instant clerk e-search → voice diagnostic (🩺) → human runner (👟)."},
+      {label:"KPIs", text:"Counties outstanding, ageing bar."}
+    ]
+  }},
+  {id:"DIAG", label:"VoiceDiagnostic", icon:"🩺", cat:"aux", details:{ title:"🩺 DIAG – VoiceDiagnostic", sections:[
+      {label:"Technology", text:"Twilio IVR probe to county clerks."},
+      {label:"Goal", text:"Detects if automated lookup is available."},
+      {label:"Returns", text:"“Yes/No” + clerk menu path recorded."}
+    ]
+  }},
+  {id:"RUN", label:"Runner", icon:"👟", cat:"aux", details:{ title:"👟 RUN – Runner", sections:[
+      {label:"Integration", text:"ServeManager for dispatching courthouse runner."},
+      {label:"Task", text:"Physical retrieval when digital methods fail."},
+      {label:"Panel shows", text:"Runner ETA, cost estimate, receipt photo."}
+    ]
+  }},
+  {id:"MAIL", label:"SnailMail", icon:"✉️", cat:"aux", details:{ title:"✉️ MAIL – SnailMail", sections:[
+      {label:"Use", text:"Lob API certified mail when digital fails."},
+      {label:"Features", text:"PDF letter, USPS tracking link."}
+    ]
+  }},
+  {id:"QA", label:"SampleAuditLeaf", icon:"🔎", cat:"qa", details:{ title:"🔎 QA – SampleAuditLeaf", sections:[
+      {label:"Function", text:"Random 2% report manual audit."},
+      {label:"Shows", text:"Checklist status, auditor notes, pass/fail trend."}
+    ]
+  }},
+  {id:"REPORT", label:"ReportBuilder", icon:"📄", cat:"output", details:{ title:"📄 REPORT – ReportBuilder", sections:[
+      {label:"Action", text:"Assembles leaf JSON into final FCRA-compliant PDF & JSON."},
+      {label:"Extras", text:"Watermark, page count, generation time."}
+    ]
+  }},
+  {id:"SMTP", label:"Email Dispatch", icon:"📧", cat:"output", details:{ title:"📧 SMTP – Email Dispatch", sections:[
+      {label:"Action", text:"Sends adverse-action or final report email."},
+      {label:"Panel", text:"Template preview, click-through tracking, bounce status."}
+    ]
+  }}
+];
+const linksData = [ /* ... same as before, ensure unique IDs ... */
+  {source:"INT",target:"ORCH", id: "L-INT-ORCH"},
+  {source:"ORCH",target:"ID", id: "L-ORCH-ID"},{source:"ORCH",target:"Nexus", id: "L-ORCH-NEXUS"},{source:"ORCH",target:"MVR", id: "L-ORCH-MVR"},{source:"ORCH",target:"EMP", id: "L-ORCH-EMP"},
+  {source:"EMP",target:"CALL1", id: "L-EMP-CALL1"},
+  {source:"ORCH",target:"EDU", id: "L-ORCH-EDU"},{source:"EDU",target:"CALL2", id: "L-EDU-CALL2"},
+  {source:"ORCH",target:"CREDIT", id: "L-ORCH-CREDIT"},{source:"ORCH",target:"CIVIL", id: "L-ORCH-CIVIL"},{source:"ORCH",target:"LICENSE", id: "L-ORCH-LICENSE"},{source:"ORCH",target:"SANCT", id: "L-ORCH-SANCT"},
+  {source:"ORCH",target:"CNTY", id: "L-ORCH-CNTY"},{source:"CNTY",target:"DIAG", id: "L-CNTY-DIAG"},{source:"DIAG",target:"RUN", id: "L-DIAG-RUN"},{source:"RUN",target:"MAIL", id: "L-RUN-MAIL"},
+  {source:"ORCH",target:"QA", id: "L-ORCH-QA"},{source:"QA",target:"REPORT", id: "L-QA-REPORT"},{source:"REPORT",target:"SMTP", id: "L-REPORT-SMTP"}
+];
+
+const R = 28;
+const nodeColor = d3.scaleOrdinal().domain(["input", "orchestrator", "data", "aux", "qa", "output"]).range(["#007bff", "#fd7e14", "#28a745", "#6f42c1", "#dc3545", "#6c757d"]);
+
+const svg = d3.select(".svg-container svg");
+let currentWidth = document.querySelector('.svg-container').clientWidth;
+let currentHeight = document.querySelector('.svg-container').clientHeight;
+
+svg.attr("viewBox", [0, 0, currentWidth, currentHeight]);
+const g = svg.append("g");
+const zoomBehavior = d3.zoom().scaleExtent([0.25, 4]).on("zoom", (event) => g.attr("transform", event.transform));
+svg.call(zoomBehavior);
+
+svg.append("defs").append("filter") /* ... node-shadow ... */
+  .attr("id", "node-shadow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%")
+  .html('<feDropShadow dx="1" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.15)"/>');
+svg.append("defs").append("marker") /* ... arrow-default ... */
+  .attr("id", "arrow-default").attr("viewBox", "0 -5 10 10").attr("refX", R + 8).attr("refY", 0)
+  .attr("markerWidth", 5).attr("markerHeight", 5).attr("orient", "auto-start-reverse")
+  .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", "var(--border-color)");
+svg.append("defs").append("marker") /* ... arrow-highlighted ... */
+  .attr("id", "arrow-highlighted").attr("viewBox", "0 -5 10 10").attr("refX", R + 8).attr("refY", 0)
+  .attr("markerWidth", 6).attr("markerHeight", 6).attr("orient", "auto-start-reverse")
+  .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", "var(--flow-highlight-color)");
+
+
+const simulation = d3.forceSimulation(nodesData) /* ... same ... */
+  .force("link", d3.forceLink(linksData).id(d => d.id).distance(d => {
+      if (d.source.id === "ORCH" || d.target.id === "ORCH") return 130;
+      if (d.source.id === "INT" || d.target.id === "INT") return 110;
+      return 170;
+  }).strength(0.9))
+  .force("charge", d3.forceManyBody().strength(-1300))
+  .force("center", d3.forceCenter(currentWidth / 2, currentHeight / 2))
+  .force("collision", d3.forceCollide().radius(R + 20));
+
+const intakeNode = nodesData.find(n => n.id === "INT");
+if (intakeNode) { intakeNode.fx = 100; intakeNode.fy = currentHeight / 2; }
+const orchestratorNode = nodesData.find(n => n.id === "ORCH");
+if (orchestratorNode) { orchestratorNode.fx = intakeNode.fx + 220; orchestratorNode.fy = currentHeight / 2; }
+
+const link = g.append("g").attr("class", "links") /* ... same ... */
+  .selectAll("line").data(linksData).join("line")
+  .attr("class", "link").attr("id", d => d.id).attr("marker-end", "url(#arrow-default)");
+const node = g.append("g").attr("class", "nodes") /* ... same ... */
+  .selectAll("g").data(nodesData).join("g")
+  .attr("class", "node").attr("id", d => `N-${d.id}`)
+  .call(d3.drag().on("start", dragStarted).on("drag", dragged).on("end", dragEnded))
+  .on("click", handleNodeClick);
+node.append("circle").attr("class", "node-circle").attr("r", R).attr("fill", d => nodeColor(d.cat || "data"));
+node.append("text").attr("class", "node-icon").text(d => d.icon);
+simulation.on("tick", () => { /* ... same ... */
+  link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+  node.attr("transform", d => `translate(${d.x},${d.y})`);
+});
+
+// Drag Handlers, Details Panel Logic, Node Click Handler (all same as v5)
+let isDragging = false; function dragStarted(event, d) { isDragging = true; if (!event.active) simulation.alphaTarget(0.3).restart(); if ((d.id !== "INT" && d.id !== "ORCH") || !isFlowActive) { d.fx = d.x; d.fy = d.y; } svg.classed("grabbing", true); } function dragged(event, d) { if ((d.id !== "INT" && d.id !== "ORCH") || !isFlowActive) { d.fx = event.x; d.fy = event.y; } } function dragEnded(event, d) { setTimeout(() => isDragging = false, 0); if (!event.active) simulation.alphaTarget(0); if (d.id !== "INT" && d.id !== "ORCH") { d.fx = null; d.fy = null; } svg.classed("grabbing", false); }
+const detailsPanel = d3.select("#details-panel"); const detailsPanelTitle = d3.select("#details-panel-title"); const detailsPanelContent = d3.select("#details-panel-content"); const detailsPanelCloseButton = d3.select("#details-panel-close"); let activeNodeIdForPanel = null; function showDetailsPanel(nodeData) { if (!nodeData.details) { hideDetailsPanel(); return; } detailsPanelTitle.text(nodeData.details.title || `${nodeData.icon} ${nodeData.id} – ${nodeData.label}`); let contentHtml = nodeData.details.sections.map(s => `<p><strong>${s.label}:</strong> ${s.text}</p>`).join(""); if (!contentHtml) contentHtml = "<p>No detailed information available.</p>"; detailsPanelContent.html(contentHtml); detailsPanel.classed("visible", true); activeNodeIdForPanel = nodeData.id; node.classed("selected", d => d.id === nodeData.id); } function hideDetailsPanel() { detailsPanel.classed("visible", false); activeNodeIdForPanel = null; node.classed("selected", false); } detailsPanelCloseButton.on("click", hideDetailsPanel); function handleNodeClick(event, d) { event.stopPropagation(); if (isDragging) return; if (activeNodeIdForPanel === d.id) { hideDetailsPanel(); } else { showDetailsPanel(d); } } d3.select("body").on("click", function(event) { if (detailsPanel.classed("visible") && !detailsPanel.node().contains(event.target) && !d3.select(event.target).closest('.node').size() && !d3.select(event.target).closest('#narration-panel').size() && !d3.select(event.target).closest('.controls button').size() ) { hideDetailsPanel(); } });
+
+
+// --- Flow Animation Logic with Milestones ---
+const narrationPanel = d3.select("#narration-panel");
+const narrationPanelText = d3.select("#narration-panel-text");
+const startFlowBtn = d3.select("#start-flow-btn");
+const resetFlowBtn = d3.select("#reset-flow-btn");
+const resetZoomBtn = d3.select("#reset-zoom-btn");
+
+let flowAnimationTimeout;
+let currentFlowStep = 0;
+let isFlowActive = false;
+let milestoneTimeout; // To remove milestone active class
+
+// Updated flowSequence with 'milestone' type and refined explanations
+const flowSequence = [
+    { type: 'node', id: 'INT', explanation: "Candidate data is securely received and schema validated." },
+    { type: 'link', id: 'L-INT-ORCH', explanation: "Information is routed to our intelligent Orchestrator." },
+    { type: 'milestone', explanation: "Data Intake & Validation Complete. Ready for processing." },
+    { type: 'node', id: 'ORCH', explanation: "Orchestrator Hub activates, managing all checks in parallel." },
+    { type: 'milestone', explanation: "Core Automated Checks Launched by the Orchestrator." },
+    { type: 'group', name: 'ORCH_PRIMARY_FAN_OUT', groupExplanation: "Phase 1: Parallel screening across primary data sources.", elements: [
+        { type: 'link', id: 'L-ORCH-ID' }, { type: 'node', id: 'ID', explanation: "Identity Verification: Confirming SSN, DOB, and aliases." },
+        { type: 'link', id: 'L-ORCH-NEXUS' }, { type: 'node', id: 'Nexus', explanation: "National Criminal Scan: Checking databases for records & watchlist hits." },
+        { type: 'link', id: 'L-ORCH-MVR' }, { type: 'node', id: 'MVR', explanation: "Driving Records Check: Verifying driving history and license status." },
+        { type: 'link', id: 'L-ORCH-EMP' }, { type: 'node', id: 'EMP', explanation: "Employment History: Cross-referencing databases for past employment." },
+        { type: 'link', id: 'L-ORCH-EDU' }, { type: 'node', id: 'EDU', explanation: "Education Credentials: Validating degrees and attendance." },
+    ], delay: 300 },
+    { type: 'milestone', explanation: "Primary Data Verification Complete. Initial findings gathered." },
+    { type: 'group', name: 'ORCH_SECONDARY_FAN_OUT', groupExplanation: "Phase 2: Specialized compliance and deeper verifications.", elements: [
+        { type: 'link', id: 'L-ORCH-CREDIT' }, { type: 'node', id: 'CREDIT', explanation: "Credit & Financial (Permissible): Assessing financial indicators." },
+        { type: 'link', id: 'L-ORCH-CIVIL' }, { type: 'node', id: 'CIVIL', explanation: "Civil Court Records: Checking for relevant civil litigation." },
+        { type: 'link', id: 'L-ORCH-LICENSE' }, { type: 'node', id: 'LICENSE', explanation: "Professional Licenses: Verifying status of required licenses." },
+        { type: 'link', id: 'L-ORCH-SANCT' }, { type: 'node', id: 'SANCT', explanation: "Sanctions & Debarment: Screening against global sanction lists." },
+        { type: 'link', id: 'L-ORCH-CNTY' }, { type: 'node', id: 'CNTY', explanation: "County-Level Deep Dive: Initiating targeted local record searches." },
+    ], delay: 300 },
+    { type: 'milestone', explanation: "Specialized & Compliance Screening Complete." },
+    { type: 'group', name: 'EXTENDED_VERIFICATIONS', groupExplanation: "Phase 3: Automated follow-ups for comprehensive verification.", elements: [
+        { type: 'link', id: 'L-EMP-CALL1', subDelay: 0 }, { type: 'node', id: 'CALL1', explanation: "Automated HR Outreach: AI voice calls HR for employment details.", subDelay: 700 },
+        { type: 'link', id: 'L-EDU-CALL2', subDelay: 700 }, { type: 'node', id: 'CALL2', explanation: "Automated Registrar Call: AI voice contacts registrars for education data.", subDelay: 700 },
+        { type: 'link', id: 'L-CNTY-DIAG', subDelay: 1400 }, { type: 'node', id: 'DIAG', explanation: "County Search Diagnostics: AI determines optimal county search method.", subDelay: 600 },
+        { type: 'link', id: 'L-DIAG-RUN', subDelay: 600 }, { type: 'node', id: 'RUN', explanation: "Courthouse Runner Dispatch: Physical runner for record retrieval if needed.", subDelay: 600 },
+        { type: 'link', id: 'L-RUN-MAIL', subDelay: 600 }, { type: 'node', id: 'MAIL', explanation: "Formal Mail Request: Certified mail for verification if other methods fail.", subDelay: 600 },
+    ], delay: 0 }, // Overall group delay is handled by subDelays
+    { type: 'milestone', explanation: "Extended Verifications Processed. All data points pursued." },
+    { type: 'group', name: 'QA_AND_REPORTING', groupExplanation: "Final Phase: Ensuring quality and delivering the actionable report.", elements: [
+        { type: 'link', id: 'L-ORCH-QA' }, { type: 'node', id: 'QA', explanation: "Quality Assurance: Reports undergo human audit for accuracy." },
+        { type: 'link', id: 'L-QA-REPORT' }, { type: 'node', id: 'REPORT', explanation: "Report Generation: Verified data compiled into a compliant report (PDF/JSON)." },
+        { type: 'link', id: 'L-REPORT-SMTP' }, { type: 'node', id: 'SMTP', explanation: "Secure Delivery: Final reports or notices are dispatched." },
+    ], delay: 800 },
+    { type: 'milestone', explanation: "Process Complete: Report Finalized and Ready for Review." },
+];
+
+function updateNarration(text, isMilestone = false) {
+    narrationPanelText.html(text || "Processing...");
+    if (text && !narrationPanel.classed("visible")) {
+        narrationPanel.classed("visible", true);
+    } else if (!text && narrationPanel.classed("visible")) {
+        narrationPanel.classed("visible", false);
+    }
+
+    clearTimeout(milestoneTimeout); // Clear previous timeout if any
+    if (isMilestone) {
+        narrationPanel.classed("milestone-active", true);
+        milestoneTimeout = setTimeout(() => {
+            narrationPanel.classed("milestone-active", false);
+        }, 2500); // Keep milestone style for 2.5 seconds
+    } else {
+        narrationPanel.classed("milestone-active", false);
+    }
+}
+
+function animateFlowStep() {
+    if (currentFlowStep >= flowSequence.length) {
+        updateNarration("<strong>MILESTONE:</strong> Process Flow Complete. All checks processed and report finalized.", true);
+        return;
+    }
+
+    const step = flowSequence[currentFlowStep];
+    let stepDelay = 1500; // Default delay, allows reading time
+
+    if (step.type === 'milestone') {
+        updateNarration(`<strong>MILESTONE:</strong> ${step.explanation}`, true);
+        stepDelay = 3000; // Longer pause for milestones
+    } else if (step.groupExplanation) { // For groups, show group explanation first
+        updateNarration(step.groupExplanation);
+        stepDelay = 2000; // Delay before starting group elements
+    } else if (step.explanation) { // For individual nodes/links
+        updateNarration(step.explanation);
+    }
+
+
+    if (step.type === 'node') {
+        d3.select(`#N-${step.id}`).classed('flow-highlighted', true);
+    } else if (step.type === 'link') {
+        d3.select(`#${step.id}`)
+          .classed('flow-highlighted-link', true)
+          .attr("marker-end", "url(#arrow-highlighted)");
+    } else if (step.type === 'group') {
+        let cumulativeDelayForGroupElements = (step.groupExplanation ? 1800 : 0); // Start after group explanation
+        let maxSubDelayInGroup = 0;
+
+        step.elements.forEach((el) => {
+            const currentElementDelay = cumulativeDelayForGroupElements + (el.subDelay || 0);
+            setTimeout(() => {
+                if (el.explanation && !step.groupExplanation) updateNarration(el.explanation); // Update for sub-element if no group overview
+                else if (el.explanation && step.groupExplanation) updateNarration(`${step.groupExplanation} <span style="font-size:0.9em; opacity:0.8;"> <br>&hookrightarrow; ${el.explanation}</span>`);
+
+
+                if (el.type === 'node') {
+                    d3.select(`#N-${el.id}`).classed('flow-highlighted', true);
+                } else if (el.type === 'link') {
+                    d3.select(`#${el.id}`)
+                      .classed('flow-highlighted-link', true)
+                      .attr("marker-end", "url(#arrow-highlighted)");
+                }
+            }, currentElementDelay);
+             // Use the group's defined delay for stepping *between* its elements
+            cumulativeDelayForGroupElements += (step.delay || 300);
+            maxSubDelayInGroup = Math.max(maxSubDelayInGroup, (el.subDelay || 0) + (step.delay || 300));
+        });
+        // The stepDelay for the *entire group* should be how long the longest path in the group takes
+        // plus a buffer for the next step.
+        stepDelay = maxSubDelayInGroup + 500; // Wait for all group elements to finish + buffer
+    }
+
+    currentFlowStep++;
+    flowAnimationTimeout = setTimeout(animateFlowStep, stepDelay);
+}
+
+
+function startFlow() {
+    if (isFlowActive) resetFlowVisualization();
+    isFlowActive = true;
+    currentFlowStep = 0;
+    svg.classed('flow-active', true);
+    narrationPanel.classed("visible", true);
+    updateNarration("Starting Background Check Process Flow...");
+
+    if (intakeNode) { intakeNode.fx = 100; intakeNode.fy = currentHeight / 2; }
+    if (orchestratorNode) { orchestratorNode.fx = intakeNode.fx + 220; orchestratorNode.fy = currentHeight / 2; }
+    simulation.alpha(0.1).restart();
+
+    animateFlowStep();
+    startFlowBtn.style('display', 'none');
+    resetFlowBtn.style('display', 'inline-block');
+}
+
+function resetFlowVisualization() {
+    clearTimeout(flowAnimationTimeout);
+    clearTimeout(milestoneTimeout);
+    isFlowActive = false;
+    currentFlowStep = 0;
+    svg.classed('flow-active', false);
+    node.classed('flow-highlighted', false);
+    link.classed('flow-highlighted-link', false).attr("marker-end", "url(#arrow-default)");
+    narrationPanel.classed("visible", false).classed("milestone-active", false);
+    updateNarration("");
+
+    startFlowBtn.style('display', 'inline-block');
+    resetFlowBtn.style('display', 'none');
+}
+
+startFlowBtn.on('click', startFlow);
+resetFlowBtn.on('click', resetFlowVisualization);
+resetZoomBtn.on('click', () => {
+    svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity);
+    if (isFlowActive) resetFlowVisualization();
+    hideDetailsPanel();
+});
+
+function populateLegend() { /* ... same as before ... */
+  const legendItemsDiv = d3.select("#legend-items");
+  legendItemsDiv.html("");
+  const legendCategories = nodeColor.domain();
+  legendCategories.forEach(category => {
+    const item = legendItemsDiv.append("div").style("display", "flex").style("align-items", "center").style("margin-bottom", "4px");
+    item.append("span")
+      .attr("class", "legend-color-swatch")
+      .style("background-color", nodeColor(category));
+    item.append("span")
+      .attr("class", "legend-text")
+      .style("margin-left", "8px")
+      .text(category.charAt(0).toUpperCase() + category.slice(1));
+  });
+}
+populateLegend();
+
+window.addEventListener("resize", () => { /* ... same as before ... */
+  currentWidth = document.querySelector('.svg-container').clientWidth;
+  currentHeight = document.querySelector('.svg-container').clientHeight;
+  svg.attr("viewBox", [0, 0, currentWidth, currentHeight]);
+  simulation.force("center", d3.forceCenter(currentWidth / 2, currentHeight / 2));
+  if (intakeNode) { intakeNode.fx = 100; intakeNode.fy = currentHeight / 2; }
+  if (orchestratorNode) { orchestratorNode.fx = intakeNode.fx + 220; orchestratorNode.fy = currentHeight / 2; }
+  simulation.alpha(0.3).restart();
+});
+
+</script>
+</body>
+</html>
