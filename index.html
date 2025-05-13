@@ -410,7 +410,12 @@ function updateNarration(text, isMilestone = false) {
 
 function animateFlowStep() {
     if (currentFlowStep >= flowSequence.length) {
-        updateNarration("<strong>MILESTONE:</strong> Process Flow Complete. All checks processed and report finalized.", true);
+        updateNarration("Animation complete! You can click any node for details, or 'Start Flow' to watch again.", false);
+        narrationPanel.classed("visible", true); // Ensure it stays visible
+        isFlowActive = false; 
+        svg.classed('flow-active', false); 
+        startFlowBtn.style('display', 'inline-block');
+        resetFlowBtn.style('display', 'none');
         return;
     }
 
@@ -492,13 +497,12 @@ function resetFlowVisualization() {
     svg.classed('flow-active', false);
     node.classed('flow-highlighted', false);
     link.classed('flow-highlighted-link', false).attr("marker-end", "url(#arrow-default)");
-    narrationPanel.classed("visible", false).classed("milestone-active", false);
-    updateNarration("");
+    updateNarration("Flow reset. Explore the graph or click 'Start Flow' to begin the animation.", false);
+    narrationPanel.classed("visible", true).classed("milestone-active", false); // Keep visible
 
     startFlowBtn.style('display', 'inline-block');
     resetFlowBtn.style('display', 'none');
 }
-
 startFlowBtn.on('click', startFlow);
 resetFlowBtn.on('click', resetFlowVisualization);
 resetZoomBtn.on('click', () => {
@@ -533,6 +537,10 @@ window.addEventListener("resize", () => { /* ... same as before ... */
   if (orchestratorNode) { orchestratorNode.fx = intakeNode.fx + 220; orchestratorNode.fy = currentHeight / 2; }
   simulation.alpha(0.3).restart();
 });
+
+// Initial Welcome Message for Onboarding
+narrationPanel.classed("visible", true);
+updateNarration("Welcome! This animation walks through our investor-focused background check process. Click 'Start Flow' to begin, or explore the nodes manually.");
 
 </script>
 </body>
