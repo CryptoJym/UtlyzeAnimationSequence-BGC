@@ -125,10 +125,57 @@
     #details-panel-content p:last-child { margin-bottom: 0; }
     #details-panel-content strong { color: var(--text-primary); font-weight: 600; }
 
+    /* Progress Checklist Styles */
+    #progress-checklist {
+      position: absolute;
+      top: 20px; /* Align with narration panel or adjust as needed */
+      right: 20px;
+      width: 220px;
+      padding: 12px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      box-shadow: 0 4px 15px var(--shadow-color);
+      z-index: 150; /* Below narration panel, above SVG */
+      font-size: 13px;
+    }
+    #progress-checklist h4 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 7px;
+      opacity: 0.6; /* Dim pending items */
+      transition: opacity 0.3s ease, color 0.3s ease;
+    }
+    .checklist-item.completed {
+      opacity: 1;
+      color: var(--text-primary); /* Or a specific success color */
+    }
+    .checklist-item-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+    .checklist-item-icon::before { /* Default to pending icon */
+      content: "◻"; /* Or a different pending icon like ◌ or empty circle */
+      color: var(--text-secondary);
+    }
+    .checklist-item.completed .checklist-item-icon::before {
+      content: "✔"; /* Checkmark */
+      color: var(--milestone-highlight-color); /* Green check */
+    }
   </style>
 </head>
 <body>
-  <div id="narration-panel"><span id="narration-panel-text">Process overview will appear here.</span></div>
+  <div id="narration-panel"><span id="narration-panel-text"></span></div>
 
   <div class="svg-container">
     <svg></svg>
@@ -136,6 +183,27 @@
       <h4>Node Categories</h4>
       <div id="legend-items"></div>
     </div>
+
+    <!-- Progress Checklist HTML -->
+    <div id="progress-checklist">
+      <h4>Process Stages</h4>
+      <div class="checklist-item pending" id="checklist-intake">
+        <span class="checklist-item-icon"></span>Data Intake & Validation
+      </div>
+      <div class="checklist-item pending" id="checklist-primary-screening">
+        <span class="checklist-item-icon"></span>Primary Data Screening
+      </div>
+      <div class="checklist-item pending" id="checklist-specialized-screening">
+        <span class="checklist-item-icon"></span>Specialized & Compliance Screening
+      </div>
+      <div class="checklist-item pending" id="checklist-extended-verification">
+        <span class="checklist-item-icon"></span>Extended Verifications
+      </div>
+      <div class="checklist-item pending" id="checklist-qa-reporting">
+        <span class="checklist-item-icon"></span>Quality Assurance & Reporting
+      </div>
+    </div>
+
     <div class="controls">
       <button id="start-flow-btn" class="control-btn">Start Flow</button>
       <button id="reset-flow-btn" class="control-btn">Reset Flow</button>
@@ -302,7 +370,6 @@ svg.append("defs").append("marker") /* ... arrow-highlighted ... */
   .attr("markerWidth", 6).attr("markerHeight", 6).attr("orient", "auto-start-reverse")
   .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", "var(--flow-highlight-color)");
 
-
 const simulation = d3.forceSimulation(nodesData) /* ... same ... */
   .force("link", d3.forceLink(linksData).id(d => d.id).distance(d => {
       if (d.source.id === "ORCH" || d.target.id === "ORCH") return 130;
@@ -359,7 +426,7 @@ let currentMilestoneTimerStart = 0; // Store when a milestone timer started
 const flowSequence = [
     { type: 'node', id: 'INT', explanation: "Candidate data is securely received and schema validated." },
     { type: 'link', id: 'L-INT-ORCH', explanation: "Information is routed to our intelligent Orchestrator." },
-    { type: 'milestone', explanation: "Data Intake & Validation Complete. Ready for processing." },
+    { type: 'milestone', explanation: "Data Intake & Validation Complete. Ready for processing.", checklistId: "checklist-intake" },
     { type: 'node', id: 'ORCH', explanation: "Orchestrator Hub activates, managing all checks in parallel." },
     { type: 'milestone', explanation: "Core Automated Checks Launched by the Orchestrator." },
     { type: 'group', name: 'ORCH_PRIMARY_FAN_OUT', groupExplanation: "Phase 1: Parallel screening across primary data sources.", elements: [
@@ -369,7 +436,7 @@ const flowSequence = [
         { type: 'link', id: 'L-ORCH-EMP' }, { type: 'node', id: 'EMP', explanation: "Employment History: Cross-referencing databases for past employment." },
         { type: 'link', id: 'L-ORCH-EDU' }, { type: 'node', id: 'EDU', explanation: "Education Credentials: Validating degrees and attendance." },
     ], delay: 300 },
-    { type: 'milestone', explanation: "Primary Data Verification Complete. Initial findings gathered." },
+    { type: 'milestone', explanation: "Primary Data Verification Complete. Initial findings gathered.", checklistId: "checklist-primary-screening" },
     { type: 'group', name: 'ORCH_SECONDARY_FAN_OUT', groupExplanation: "Phase 2: Specialized compliance and deeper verifications.", elements: [
         { type: 'link', id: 'L-ORCH-CREDIT' }, { type: 'node', id: 'CREDIT', explanation: "Credit & Financial (Permissible): Assessing financial indicators." },
         { type: 'link', id: 'L-ORCH-CIVIL' }, { type: 'node', id: 'CIVIL', explanation: "Civil Court Records: Checking for relevant civil litigation." },
@@ -377,7 +444,7 @@ const flowSequence = [
         { type: 'link', id: 'L-ORCH-SANCT' }, { type: 'node', id: 'SANCT', explanation: "Sanctions & Debarment: Screening against global sanction lists." },
         { type: 'link', id: 'L-ORCH-CNTY' }, { type: 'node', id: 'CNTY', explanation: "County-Level Deep Dive: Initiating targeted local record searches." },
     ], delay: 300 },
-    { type: 'milestone', explanation: "Specialized & Compliance Screening Complete." },
+    { type: 'milestone', explanation: "Specialized & Compliance Screening Complete.", checklistId: "checklist-specialized-screening" },
     { type: 'group', name: 'EXTENDED_VERIFICATIONS', groupExplanation: "Phase 3: Automated follow-ups for comprehensive verification.", elements: [
         { type: 'link', id: 'L-EMP-CALL1', subDelay: 0 }, { type: 'node', id: 'CALL1', explanation: "Automated HR Outreach: AI voice calls HR for employment details.", subDelay: 700 },
         { type: 'link', id: 'L-EDU-CALL2', subDelay: 700 }, { type: 'node', id: 'CALL2', explanation: "Automated Registrar Call: AI voice contacts registrars for education data.", subDelay: 700 },
@@ -385,13 +452,13 @@ const flowSequence = [
         { type: 'link', id: 'L-DIAG-RUN', subDelay: 600 }, { type: 'node', id: 'RUN', explanation: "Courthouse Runner Dispatch: Physical runner for record retrieval if needed.", subDelay: 600 },
         { type: 'link', id: 'L-RUN-MAIL', subDelay: 600 }, { type: 'node', id: 'MAIL', explanation: "Formal Mail Request: Certified mail for verification if other methods fail.", subDelay: 600 },
     ], delay: 0 }, // Overall group delay is handled by subDelays
-    { type: 'milestone', explanation: "Extended Verifications Processed. All data points pursued." },
+    { type: 'milestone', explanation: "Extended Verifications Processed. All data points pursued.", checklistId: "checklist-extended-verification" },
     { type: 'group', name: 'QA_AND_REPORTING', groupExplanation: "Final Phase: Ensuring quality and delivering the actionable report.", elements: [
         { type: 'link', id: 'L-ORCH-QA' }, { type: 'node', id: 'QA', explanation: "Quality Assurance: Reports undergo human audit for accuracy." },
         { type: 'link', id: 'L-QA-REPORT' }, { type: 'node', id: 'REPORT', explanation: "Report Generation: Verified data compiled into a compliant report (PDF/JSON)." },
         { type: 'link', id: 'L-REPORT-SMTP' }, { type: 'node', id: 'SMTP', explanation: "Secure Delivery: Final reports or notices are dispatched." },
     ], delay: 800 },
-    { type: 'milestone', explanation: "Process Complete: Report Finalized and Ready for Review." },
+    { type: 'milestone', explanation: "Quality Assurance & Reporting Finalized. Process Complete.", checklistId: "checklist-qa-reporting" } // Final checklist item
 ];
 
 function updateNarration(text, isMilestone = false) {
@@ -439,6 +506,14 @@ function animateFlowStep() {
             }
             remainingMilestoneDelay = 0; // Reset after completion
         }, currentTimerDelay);
+
+        // Update checklist if this milestone has a checklistId
+        if (step.checklistId) {
+            const checklistItem = d3.select(`#${step.checklistId}`);
+            if (!checklistItem.empty()) {
+                checklistItem.classed('pending', false).classed('completed', true);
+            }
+        }
     } else {
         narrationPanel.classed("milestone-active", false);
     }
@@ -584,6 +659,11 @@ function resetFlowVisualization() {
 
     startFlowBtn.text('Start Flow').classed('pause-active', false).style('display', 'inline-block');
     resetFlowBtn.style('display', 'none');
+
+    // Reset checklist items
+    d3.selectAll(".checklist-item")
+        .classed('completed', false)
+        .classed('pending', true);
 }
 
 // Modify the startFlowBtn event listener
