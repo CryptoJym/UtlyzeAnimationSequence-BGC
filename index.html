@@ -125,57 +125,10 @@
     #details-panel-content p:last-child { margin-bottom: 0; }
     #details-panel-content strong { color: var(--text-primary); font-weight: 600; }
 
-    /* Progress Checklist Styles */
-    #progress-checklist {
-      position: absolute;
-      top: 20px; /* Align with narration panel or adjust as needed */
-      right: 20px;
-      width: 220px;
-      padding: 12px;
-      background: var(--panel-bg);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--panel-border);
-      border-radius: 10px;
-      box-shadow: 0 4px 15px var(--shadow-color);
-      z-index: 150; /* Below narration panel, above SVG */
-      font-size: 13px;
-    }
-    #progress-checklist h4 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-primary);
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 6px;
-    }
-    .checklist-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 7px;
-      opacity: 0.6; /* Dim pending items */
-      transition: opacity 0.3s ease, color 0.3s ease;
-    }
-    .checklist-item.completed {
-      opacity: 1;
-      color: var(--text-primary); /* Or a specific success color */
-    }
-    .checklist-item-icon {
-      margin-right: 8px;
-      font-size: 16px;
-    }
-    .checklist-item-icon::before { /* Default to pending icon */
-      content: "◻"; /* Or a different pending icon like ◌ or empty circle */
-      color: var(--text-secondary);
-    }
-    .checklist-item.completed .checklist-item-icon::before {
-      content: "✔"; /* Checkmark */
-      color: var(--milestone-highlight-color); /* Green check */
-    }
   </style>
 </head>
 <body>
-  <div id="narration-panel"><span id="narration-panel-text"></span></div>
+  <div id="narration-panel"><span id="narration-panel-text">Process overview will appear here.</span></div>
 
   <div class="svg-container">
     <svg></svg>
@@ -183,31 +136,10 @@
       <h4>Node Categories</h4>
       <div id="legend-items"></div>
     </div>
-
-    <!-- Progress Checklist HTML -->
-    <div id="progress-checklist">
-      <h4>Process Stages</h4>
-      <div class="checklist-item pending" id="checklist-intake">
-        <span class="checklist-item-icon"></span>Data Intake & Validation
-      </div>
-      <div class="checklist-item pending" id="checklist-primary-screening">
-        <span class="checklist-item-icon"></span>Primary Data Screening
-      </div>
-      <div class="checklist-item pending" id="checklist-specialized-screening">
-        <span class="checklist-item-icon"></span>Specialized & Compliance Screening
-      </div>
-      <div class="checklist-item pending" id="checklist-extended-verification">
-        <span class="checklist-item-icon"></span>Extended Verifications
-      </div>
-      <div class="checklist-item pending" id="checklist-qa-reporting">
-        <span class="checklist-item-icon"></span>Quality Assurance & Reporting
-      </div>
-    </div>
-
     <div class="controls">
-      <button id="start-flow-btn" class="control-btn">Start Flow</button>
-      <button id="reset-flow-btn" class="control-btn">Reset Flow</button>
-      <button id="reset-zoom-btn" class="control-btn">Reset Zoom</button>
+      <button id="reset-zoom-btn">Reset View</button>
+      <button id="start-flow-btn">Start Process Flow</button>
+      <button id="reset-flow-btn">Reset Flow</button>
     </div>
     <div id="details-panel" class="details-panel">
       <button id="details-panel-close" class="details-panel-close" aria-label="Close details panel">&times;</button>
@@ -370,6 +302,7 @@ svg.append("defs").append("marker") /* ... arrow-highlighted ... */
   .attr("markerWidth", 6).attr("markerHeight", 6).attr("orient", "auto-start-reverse")
   .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", "var(--flow-highlight-color)");
 
+
 const simulation = d3.forceSimulation(nodesData) /* ... same ... */
   .force("link", d3.forceLink(linksData).id(d => d.id).distance(d => {
       if (d.source.id === "ORCH" || d.target.id === "ORCH") return 130;
@@ -416,17 +349,12 @@ let flowAnimationTimeout;
 let currentFlowStep = 0;
 let isFlowActive = false;
 let milestoneTimeout; // To remove milestone active class
-let isPaused = false; // New state for pause/resume
-let timePaused = 0; // To store when pause was initiated
-let remainingStepDelay = 0; // To store remaining time for current step
-let remainingMilestoneDelay = 0; // To store remaining time for milestone
-let currentMilestoneTimerStart = 0; // Store when a milestone timer started
 
 // Updated flowSequence with 'milestone' type and refined explanations
 const flowSequence = [
     { type: 'node', id: 'INT', explanation: "Candidate data is securely received and schema validated." },
     { type: 'link', id: 'L-INT-ORCH', explanation: "Information is routed to our intelligent Orchestrator." },
-    { type: 'milestone', explanation: "Data Intake & Validation Complete. Ready for processing.", checklistId: "checklist-intake" },
+    { type: 'milestone', explanation: "Data Intake & Validation Complete. Ready for processing." },
     { type: 'node', id: 'ORCH', explanation: "Orchestrator Hub activates, managing all checks in parallel." },
     { type: 'milestone', explanation: "Core Automated Checks Launched by the Orchestrator." },
     { type: 'group', name: 'ORCH_PRIMARY_FAN_OUT', groupExplanation: "Phase 1: Parallel screening across primary data sources.", elements: [
@@ -436,7 +364,7 @@ const flowSequence = [
         { type: 'link', id: 'L-ORCH-EMP' }, { type: 'node', id: 'EMP', explanation: "Employment History: Cross-referencing databases for past employment." },
         { type: 'link', id: 'L-ORCH-EDU' }, { type: 'node', id: 'EDU', explanation: "Education Credentials: Validating degrees and attendance." },
     ], delay: 300 },
-    { type: 'milestone', explanation: "Primary Data Verification Complete. Initial findings gathered.", checklistId: "checklist-primary-screening" },
+    { type: 'milestone', explanation: "Primary Data Verification Complete. Initial findings gathered." },
     { type: 'group', name: 'ORCH_SECONDARY_FAN_OUT', groupExplanation: "Phase 2: Specialized compliance and deeper verifications.", elements: [
         { type: 'link', id: 'L-ORCH-CREDIT' }, { type: 'node', id: 'CREDIT', explanation: "Credit & Financial (Permissible): Assessing financial indicators." },
         { type: 'link', id: 'L-ORCH-CIVIL' }, { type: 'node', id: 'CIVIL', explanation: "Civil Court Records: Checking for relevant civil litigation." },
@@ -444,7 +372,7 @@ const flowSequence = [
         { type: 'link', id: 'L-ORCH-SANCT' }, { type: 'node', id: 'SANCT', explanation: "Sanctions & Debarment: Screening against global sanction lists." },
         { type: 'link', id: 'L-ORCH-CNTY' }, { type: 'node', id: 'CNTY', explanation: "County-Level Deep Dive: Initiating targeted local record searches." },
     ], delay: 300 },
-    { type: 'milestone', explanation: "Specialized & Compliance Screening Complete.", checklistId: "checklist-specialized-screening" },
+    { type: 'milestone', explanation: "Specialized & Compliance Screening Complete." },
     { type: 'group', name: 'EXTENDED_VERIFICATIONS', groupExplanation: "Phase 3: Automated follow-ups for comprehensive verification.", elements: [
         { type: 'link', id: 'L-EMP-CALL1', subDelay: 0 }, { type: 'node', id: 'CALL1', explanation: "Automated HR Outreach: AI voice calls HR for employment details.", subDelay: 700 },
         { type: 'link', id: 'L-EDU-CALL2', subDelay: 700 }, { type: 'node', id: 'CALL2', explanation: "Automated Registrar Call: AI voice contacts registrars for education data.", subDelay: 700 },
@@ -452,87 +380,70 @@ const flowSequence = [
         { type: 'link', id: 'L-DIAG-RUN', subDelay: 600 }, { type: 'node', id: 'RUN', explanation: "Courthouse Runner Dispatch: Physical runner for record retrieval if needed.", subDelay: 600 },
         { type: 'link', id: 'L-RUN-MAIL', subDelay: 600 }, { type: 'node', id: 'MAIL', explanation: "Formal Mail Request: Certified mail for verification if other methods fail.", subDelay: 600 },
     ], delay: 0 }, // Overall group delay is handled by subDelays
-    { type: 'milestone', explanation: "Extended Verifications Processed. All data points pursued.", checklistId: "checklist-extended-verification" },
+    { type: 'milestone', explanation: "Extended Verifications Processed. All data points pursued." },
     { type: 'group', name: 'QA_AND_REPORTING', groupExplanation: "Final Phase: Ensuring quality and delivering the actionable report.", elements: [
         { type: 'link', id: 'L-ORCH-QA' }, { type: 'node', id: 'QA', explanation: "Quality Assurance: Reports undergo human audit for accuracy." },
         { type: 'link', id: 'L-QA-REPORT' }, { type: 'node', id: 'REPORT', explanation: "Report Generation: Verified data compiled into a compliant report (PDF/JSON)." },
         { type: 'link', id: 'L-REPORT-SMTP' }, { type: 'node', id: 'SMTP', explanation: "Secure Delivery: Final reports or notices are dispatched." },
     ], delay: 800 },
-    { type: 'milestone', explanation: "Quality Assurance & Reporting Finalized. Process Complete.", checklistId: "checklist-qa-reporting" } // Final checklist item
+    { type: 'milestone', explanation: "Process Complete: Report Finalized and Ready for Review." },
 ];
 
 function updateNarration(text, isMilestone = false) {
-    const textSpan = d3.select("#narration-panel-text");
-    textSpan.html(text); // Use html to allow spans for styling
-    narrationPanel.classed("milestone-active", isMilestone);
-    // If paused, don't make it visible immediately, wait for resume
-    if (!isPaused) {
-        narrationPanel.classed("visible", !!text);
+    narrationPanelText.html(text || "Processing...");
+    if (text && !narrationPanel.classed("visible")) {
+        narrationPanel.classed("visible", true);
+    } else if (!text && narrationPanel.classed("visible")) {
+        narrationPanel.classed("visible", false);
+    }
+
+    clearTimeout(milestoneTimeout); // Clear previous timeout if any
+    if (isMilestone) {
+        narrationPanel.classed("milestone-active", true);
+        milestoneTimeout = setTimeout(() => {
+            narrationPanel.classed("milestone-active", false);
+        }, 2500); // Keep milestone style for 2.5 seconds
+    } else {
+        narrationPanel.classed("milestone-active", false);
     }
 }
 
 function animateFlowStep() {
-    if (isPaused) return; // Don't proceed if paused
-
     if (currentFlowStep >= flowSequence.length) {
-        updateNarration("Animation complete! You can click any node for details, or 'Start Flow' to watch again.", false);
+        updateNarration("<strong>MILESTONE:</strong> Process Flow Complete. All checks processed and report finalized.", true);
         return;
     }
 
     const step = flowSequence[currentFlowStep];
-    let stepDelay = step.delay || 2000;
-    let milestoneDelay = step.milestoneDelay || 0;
+    let stepDelay = 1500; // Default delay, allows reading time
 
-    // Handle current step's primary narration and highlight
-    if (step.narration) {
-        // If resuming, and there was remaining time for milestone, adjust narration display
-        if (remainingMilestoneDelay > 0 && isPaused) {
-            // Don't immediately show narration if milestone was pending, let it re-trigger
-        } else {
-            updateNarration(step.narration, step.isMilestone);
-        }
+    if (step.type === 'milestone') {
+        updateNarration(`<strong>MILESTONE:</strong> ${step.explanation}`, true);
+        stepDelay = 3000; // Longer pause for milestones
+    } else if (step.groupExplanation) { // For groups, show group explanation first
+        updateNarration(step.groupExplanation);
+        stepDelay = 2000; // Delay before starting group elements
+    } else if (step.explanation) { // For individual nodes/links
+        updateNarration(step.explanation);
     }
 
-    if (step.isMilestone) {
-        narrationPanel.classed("milestone-active", true);
-        // If resuming, use remainingMilestoneDelay
-        const currentTimerDelay = (remainingMilestoneDelay > 0 && isPaused) ? remainingMilestoneDelay : milestoneDelay;
-        currentMilestoneTimerStart = Date.now(); // Track when this specific timer starts
-        milestoneTimeout = setTimeout(() => {
-            if (isPaused) return;
-            narrationPanel.classed("milestone-active", false);
-            if (step.postMilestoneNarration) {
-                updateNarration(step.postMilestoneNarration, false);
-            }
-            remainingMilestoneDelay = 0; // Reset after completion
-        }, currentTimerDelay);
 
-        // Update checklist if this milestone has a checklistId
-        if (step.checklistId) {
-            const checklistItem = d3.select(`#${step.checklistId}`);
-            if (!checklistItem.empty()) {
-                checklistItem.classed('pending', false).classed('completed', true);
-            }
-        }
-    } else {
-        narrationPanel.classed("milestone-active", false);
-    }
+    if (step.type === 'node') {
+        d3.select(`#N-${step.id}`).classed('flow-highlighted', true);
+    } else if (step.type === 'link') {
+        d3.select(`#${step.id}`)
+          .classed('flow-highlighted-link', true)
+          .attr("marker-end", "url(#arrow-highlighted)");
+    } else if (step.type === 'group') {
+        let cumulativeDelayForGroupElements = (step.groupExplanation ? 1800 : 0); // Start after group explanation
+        let maxSubDelayInGroup = 0;
 
-    // Element Highlighting Logic
-    // Reset visual state for non-highlighted elements unless explicitly resuming a partially drawn step.
-    // For simplicity and clarity, we'll reset highlights each time animateFlowStep is effectively run for a new step.
-    if (!isPaused || (isPaused && remainingStepDelay <= 0)) { 
-        node.classed('flow-highlighted', false);
-        link.classed('flow-highlighted-link', false).attr("marker-end", "url(#arrow-default)");
-    }
-
-    if (step.elements && Array.isArray(step.elements)) {
-        step.elements.forEach(el => {
-            const highlightDelay = el.subDelay || 50; // Default short delay for staggering within the current step
+        step.elements.forEach((el) => {
+            const currentElementDelay = cumulativeDelayForGroupElements + (el.subDelay || 0);
             setTimeout(() => {
-                // Check isPaused again in case of rapid pause after timeout was set
-                // Or if flow was reset entirely while this short timeout was pending.
-                if ((isPaused && !isFlowActive) || (!isFlowActive && currentFlowStep === 0) ) return; 
+                if (el.explanation && !step.groupExplanation) updateNarration(el.explanation); // Update for sub-element if no group overview
+                else if (el.explanation && step.groupExplanation) updateNarration(`${step.groupExplanation} <span style="font-size:0.9em; opacity:0.8;"> <br>&hookrightarrow; ${el.explanation}</span>`);
+
 
                 if (el.type === 'node') {
                     d3.select(`#N-${el.id}`).classed('flow-highlighted', true);
@@ -541,62 +452,25 @@ function animateFlowStep() {
                       .classed('flow-highlighted-link', true)
                       .attr("marker-end", "url(#arrow-highlighted)");
                 }
-            }, highlightDelay);
+            }, currentElementDelay);
+             // Use the group's defined delay for stepping *between* its elements
+            cumulativeDelayForGroupElements += (step.delay || 300);
+            maxSubDelayInGroup = Math.max(maxSubDelayInGroup, (el.subDelay || 0) + (step.delay || 300));
         });
+        // The stepDelay for the *entire group* should be how long the longest path in the group takes
+        // plus a buffer for the next step.
+        stepDelay = maxSubDelayInGroup + 500; // Wait for all group elements to finish + buffer
     }
 
     currentFlowStep++;
-    // If resuming, use remainingStepDelay, otherwise use full stepDelay
-    const nextStepTimerDelay = (remainingStepDelay > 0 && isPaused) ? remainingStepDelay : stepDelay;
-    timePaused = 0; // Reset pause timestamp used for calculating remaining time
-    remainingStepDelay = 0; // Reset after use
-    remainingMilestoneDelay = 0; // Reset if not used or after use
-
-    flowAnimationTimeout = setTimeout(animateFlowStep, nextStepTimerDelay);
+    flowAnimationTimeout = setTimeout(animateFlowStep, stepDelay);
 }
 
+
 function startFlow() {
-    if (isFlowActive && !isPaused) resetFlowVisualization(); // If running, reset before starting
-    
-    if (isPaused) { // Resuming flow
-        isPaused = false;
-        startFlowBtn.text('Pause Flow');
-        narrationPanel.classed("visible", true); // Ensure narration is visible on resume
-
-        const timeSincePause = Date.now() - timePaused;
-        
-        // Adjust remaining delays if they were active
-        if (remainingStepDelay > 0) {
-            remainingStepDelay = Math.max(0, remainingStepDelay - timeSincePause);
-        }
-        if (remainingMilestoneDelay > 0) {
-            remainingMilestoneDelay = Math.max(0, remainingMilestoneDelay - timeSincePause);
-        }
-
-        animateFlowStep(); // Continue the animation
-        // If a milestone was active, restart its timer if still pending
-        if (d3.select("#narration-panel").classed("milestone-active") && remainingMilestoneDelay > 0) {
-            milestoneTimeout = setTimeout(() => {
-                if (isPaused) return;
-                narrationPanel.classed("milestone-active", false);
-                const currentStepForPostNarration = flowSequence[currentFlowStep-1]; // currentFlowStep was already incremented
-                if (currentStepForPostNarration && currentStepForPostNarration.postMilestoneNarration) {
-                    updateNarration(currentStepForPostNarration.postMilestoneNarration, false);
-                }
-                remainingMilestoneDelay = 0;
-            }, remainingMilestoneDelay);
-        }
-        return;
-    }
-
-    // Starting new flow
+    if (isFlowActive) resetFlowVisualization();
     isFlowActive = true;
-    isPaused = false;
     currentFlowStep = 0;
-    remainingStepDelay = 0;
-    remainingMilestoneDelay = 0;
-    timePaused = 0;
-
     svg.classed('flow-active', true);
     narrationPanel.classed("visible", true);
     updateNarration("Starting Background Check Process Flow...");
@@ -606,90 +480,34 @@ function startFlow() {
     simulation.alpha(0.1).restart();
 
     animateFlowStep();
-    startFlowBtn.text('Pause Flow').classed('pause-active', true);
+    startFlowBtn.style('display', 'none');
     resetFlowBtn.style('display', 'inline-block');
-}
-
-function pauseFlow() {
-    if (!isFlowActive || isPaused) return;
-    isPaused = true;
-    timePaused = Date.now(); // Record when pause started
-
-    // Calculate remaining time for the main step timeout
-    // This requires knowing when flowAnimationTimeout was *set* and its duration.
-    // This is a simplification; for precise resume, we need to track original start times and durations.
-    // For now, we'll clear and rely on explicit remaining time storage if the step has sub-elements with individual delays.
-    clearTimeout(flowAnimationTimeout);
-    clearTimeout(milestoneTimeout);
-
-    // A more robust way would be to calculate remaining time if animateFlowStep itself was simple.
-    // Given the complexity with group elements, we'll rely on re-evaluating on resume.
-    // Let's assume the current step's *intended* full delay for remainingStepDelay initially.
-    // This will be refined if the step has group elements with their own delays.
-    if (currentFlowStep > 0 && currentFlowStep <= flowSequence.length) {
-        const currentActiveStep = flowSequence[currentFlowStep -1]; // currentFlowStep is already incremented for the *next* step
-        remainingStepDelay = currentActiveStep.delay || 2000; // Default if not specified
-        if (currentActiveStep.isMilestone && d3.select("#narration-panel").classed("milestone-active")) {
-            const milestoneDuration = currentActiveStep.milestoneDelay || 0;
-            const elapsedMilestoneTime = Date.now() - currentMilestoneTimerStart;
-            remainingMilestoneDelay = Math.max(0, milestoneDuration - elapsedMilestoneTime);
-        }
-    }
-
-    startFlowBtn.text('Resume Flow').classed('pause-active', false);
-    narrationPanel.classed("visible", true); // Keep narration visible
-    updateNarration(d3.select("#narration-panel-text").html() + " <i>(Paused)</i>", d3.select("#narration-panel").classed("milestone-active"));
 }
 
 function resetFlowVisualization() {
     clearTimeout(flowAnimationTimeout);
     clearTimeout(milestoneTimeout);
     isFlowActive = false;
-    isPaused = false;
     currentFlowStep = 0;
-    remainingStepDelay = 0;
-    remainingMilestoneDelay = 0;
-    timePaused = 0;
-
     svg.classed('flow-active', false);
     node.classed('flow-highlighted', false);
     link.classed('flow-highlighted-link', false).attr("marker-end", "url(#arrow-default)");
-    updateNarration("Flow reset. Explore the graph or click 'Start Flow' to begin the animation.", false);
-    narrationPanel.classed("visible", true).classed("milestone-active", false); // Keep visible
+    narrationPanel.classed("visible", false).classed("milestone-active", false);
+    updateNarration("");
 
-    startFlowBtn.text('Start Flow').classed('pause-active', false).style('display', 'inline-block');
+    startFlowBtn.style('display', 'inline-block');
     resetFlowBtn.style('display', 'none');
-
-    // Reset checklist items
-    d3.selectAll(".checklist-item")
-        .classed('completed', false)
-        .classed('pending', true);
 }
 
-// Modify the startFlowBtn event listener
-startFlowBtn.on('click', () => {
-    if (isPaused) {
-        startFlow(); // This will trigger resume logic
-    } else if (isFlowActive) {
-        pauseFlow();
-    } else {
-        startFlow(); // This will trigger new flow start
-    }
-});
-
+startFlowBtn.on('click', startFlow);
 resetFlowBtn.on('click', resetFlowVisualization);
-
 resetZoomBtn.on('click', () => {
     svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity);
-    if (isFlowActive && !isPaused) {
-      resetFlowVisualization(); 
-    } else if (isFlowActive && isPaused) {
-      resetFlowVisualization(); // This will also set isPaused = false
-    }
+    if (isFlowActive) resetFlowVisualization();
     hideDetailsPanel();
 });
 
-function populateLegend() {
+function populateLegend() { /* ... same as before ... */
   const legendItemsDiv = d3.select("#legend-items");
   legendItemsDiv.html("");
   const legendCategories = nodeColor.domain();
@@ -706,7 +524,7 @@ function populateLegend() {
 }
 populateLegend();
 
-window.addEventListener("resize", () => {
+window.addEventListener("resize", () => { /* ... same as before ... */
   currentWidth = document.querySelector('.svg-container').clientWidth;
   currentHeight = document.querySelector('.svg-container').clientHeight;
   svg.attr("viewBox", [0, 0, currentWidth, currentHeight]);
@@ -715,10 +533,6 @@ window.addEventListener("resize", () => {
   if (orchestratorNode) { orchestratorNode.fx = intakeNode.fx + 220; orchestratorNode.fy = currentHeight / 2; }
   simulation.alpha(0.3).restart();
 });
-
-// Initial Welcome Message for Onboarding
-narrationPanel.classed("visible", true);
-updateNarration("Welcome! This animation walks through our agentic background check process. Click 'Start Flow' to begin, or explore the nodes manually.");
 
 </script>
 </body>
